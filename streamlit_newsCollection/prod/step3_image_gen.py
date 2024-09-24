@@ -4,9 +4,9 @@ import boto3
 from datetime import datetime
 from PIL import Image
 import io
-import creds
 import logging
 import warnings
+import streamlit as st
 from stability_sdk import client
 import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
 import cloudinary
@@ -17,12 +17,12 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # AWS S3 client initialization
-s3_client = boto3.client('s3')
+s3_client = boto3.client('s3', aws_access_key_id=st.secrets['AWS_ACCESS_KEY'], aws_secret_access_key=st.secrets['AWS_SECRET_KEY'])
 
 # Stability AI and Cloudinary setup
 def setup_ai_tools():
     stability_api = client.StabilityInference(
-        key=creds.STABILITY_API_KEY,
+        key=st.secrets['STABILITY_API_KEY'],
         verbose=True,
         engine="stable-diffusion-xl-1024-v1-0"
     )
@@ -31,17 +31,10 @@ def setup_ai_tools():
 # Cloudinary configuration
 def configure_cloudinary():
     cloudinary.config(
-        cloud_name=creds.CLOUDINARY_CLOUD_NAME,
-        api_key=creds.CLOUDINARY_API_KEY,
-        api_secret=creds.CLOUDINARY_API_SECRET
+        cloud_name=st.secrets['CLOUDINARY_CLOUD_NAME'],
+        api_key=st.secrets['CLOUDINARY_API_KEY'],
+        api_secret=st.secrets['CLOUDINARY_API_SECRET']
     )
-
-# Fetch CSV from S3 and load it into a DataFrame
-def fetch_csv_from_s3(bucket_name, csv_key):
-    local_csv_path = f"/tmp/{os.path.basename(csv_key)}"
-    s3_client.download_file(bucket_name, csv_key, local_csv_path)
-    df = pd.read_csv(local_csv_path)
-    return df
 
 # Generate an image based on the title and summary using Stability AI
 def generate_image(stability_api, title, summary):
@@ -97,20 +90,22 @@ def save_csv_to_s3(df, bucket_name):
     # Save the DataFrame to a local CSV
     df.to_csv(local_csv_path, index=False)
     
-    # Upload the new CSV to the "3_final_with_images" folder in S3
+    # Upload the new CSV to the "3_generated_images" folder in S3
     s3_key = f"3_generated_images/{csv_filename}"
     s3_client.upload_file(local_csv_path, bucket_name, s3_key)
     logger.info(f"Uploaded updated CSV with images to S3: {s3_key}")
+    
+    return local_csv_path, csv_filename
 
-def process_csv(bucket_name, csv_key):
-    # Step 1: Fetch the uploaded CSV from S3
-    df = fetch_csv_from_s3(bucket_name, csv_key)
+# Process the uploaded CSV file
+def process_uploaded_csv(uploaded_file):
+    df = pd.read_csv(uploaded_file)
 
-    # Step 2: Set up Stability AI and Cloudinary
+    # Set up Stability AI and Cloudinary
     stability_api = setup_ai_tools()
     configure_cloudinary()
 
-    # Step 3: Generate images and upload them to Cloudinary
+    # Generate images and upload them to Cloudinary
     image_urls = []
     
     for _, row in df.iterrows():
@@ -126,25 +121,8 @@ def process_csv(bucket_name, csv_key):
         else:
             image_urls.append(None)
 
-    # Step 4: Add the new column 'Image_URL' to the DataFrame
+    # Add the new column 'Image_URL' to the DataFrame
     df['Image_URL'] = image_urls
 
-    # Step 5: Save the updated DataFrame as a new CSV and upload it to S3
-    save_csv_to_s3(df, bucket_name)
-
-# Lambda function handler
-def lambda_handler(event, context):
-    logger.info("Lambda function started")
-    
-    # Get bucket and object information from the S3 event trigger
-    bucket_name = event['Records'][0]['s3']['bucket']['name']
-    csv_key = event['Records'][0]['s3']['object']['key']
-    
-    try:
-        # Process the CSV and generate images
-        process_csv(bucket_name, csv_key)
-        logger.info(f"Successfully processed and updated CSV from {csv_key}.")
-        return {"statusCode": 200, "body": "Success"}
-    except Exception as e:
-        logger.error(f"Error processing CSV: {e}", exc_info=True)
-        return {"statusCode": 500, "body": f"Error: {str(e)}"}
+    # Save the updated DataFrame as a new CSV and upload it to S3
+    return df

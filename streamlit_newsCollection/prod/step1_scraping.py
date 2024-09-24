@@ -6,9 +6,9 @@ import urllib.parse
 from datetime import datetime
 import pytz
 import boto3
-import creds
 import logging
 import os
+import streamlit as st
 
 # Configure logging
 logger = logging.getLogger()
@@ -40,8 +40,8 @@ HEADERS = {
 # S3 client initialization
 s3_client = boto3.client(
     's3',
-    aws_access_key_id=creds.AWS_ACCESS_KEY,
-    aws_secret_access_key=creds.AWS_SECRET_KEY
+    aws_access_key_id=st.secrets['AWS_ACCESS_KEY'],
+    aws_secret_access_key=st.secrets['AWS_SECRET_KEY']
 )
 
 def load_scraped_urls():
@@ -81,7 +81,7 @@ def fetch_content(url):
         response.raise_for_status()  # Check for HTTP errors
         return response.content  # Return HTML content
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching URL: {e}")
+        st.write(f"Error fetching URL: {e}")
         return None  # Return None if there's an error
 
 def parse_paragraphs(soup, parent_tag, child_tag='p', child_class=None, child_id=None, data_component=None):
@@ -247,7 +247,7 @@ def convert_to_berlin_time(published_str):
         # Format to exclude the timezone information
         return published_berlin.strftime('%Y-%m-%d %H:%M:%S')
     except Exception as e:
-        print(f"Error converting date: {e}")
+        st.write(f"Error converting date: {e}")
 
         # Fallback: Return the string without the timezone information
         try:
@@ -304,9 +304,9 @@ def upload_to_s3(CSV_FILE):
     
     try:
         s3_client.upload_file(CSV_FILE, S3_BUCKET_NAME, s3_key)
-        print(f"Uploaded {file_name} to S3 bucket {S3_BUCKET_NAME} in folder '1_raw'.")
+        st.write(f"Uploaded {file_name} to S3 bucket {S3_BUCKET_NAME} in folder '1_raw'.")
     except Exception as e:
-        print(f"Error uploading {file_name} to S3: {e}")
+        st.write(f"Error uploading {file_name} to S3: {e}")
 
 def main():
     scraped_urls = load_scraped_urls()  # Load already scraped URLs
@@ -319,7 +319,7 @@ def main():
         if total_count >= max_articles:
             break  # Stop if we've reached the max limit
         
-        print(f"Processing feed from {feed['name']}...")
+        st.write(f"Processing feed from {feed['name']}...")
 
         # Calculate how many more articles we can scrape
         remaining_articles = max_articles - total_count
@@ -337,27 +337,22 @@ def main():
     if all_articles:
         df = pd.DataFrame(all_articles)
         df.to_csv(CSV_FILE, index=False, encoding='utf-8')
-        print(f"Saved {len(all_articles)} new articles to {CSV_FILE}.")
+        st.write(f"Saved {len(all_articles)} new articles to {CSV_FILE}.")
 
         # Upload the CSV file to the S3 subfolder "1_raw"
         upload_to_s3(CSV_FILE)
 
-        # Delete the file from /tmp after uploading
+        # Provide a download link for the CSV file
+        with open(CSV_FILE, "rb") as file:
+            st.download_button(label="Download Scraped Articles CSV", data=file, file_name=f"scraped_articles_{timestamp}.csv")
+
+        # Delete the file from /tmp after providing download
         try:
             os.remove(CSV_FILE)
-            print(f"Deleted temporary file {CSV_FILE} from /tmp.")
+            st.write(f"Deleted temporary file {CSV_FILE} from /tmp.")
         except Exception as e:
-            print(f"Error deleting file {CSV_FILE}: {e}")
+            st.write(f"Error deleting file {CSV_FILE}: {e}")
     else:
-        print("No new articles to save.")
+        st.write("No new articles to save.")
+        return None, None  # Return None if no articles were found
 
-def lambda_handler(event, context):
-    logger.info("Lambda function started")
-    
-    try:
-        main()  # Call the main processing function
-        logger.info("Lambda function completed successfully")
-        return {"statusCode": 200, "body": "Success"}
-    except Exception as e:
-        logger.error(f"Error occurred: {e}", exc_info=True)
-        return {"statusCode": 500, "body": f"Error: {str(e)}"}

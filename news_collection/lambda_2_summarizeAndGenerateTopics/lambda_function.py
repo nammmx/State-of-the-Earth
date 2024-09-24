@@ -50,7 +50,7 @@ def generate_summary(text, summarizer, tokenizer):
     # Tokenize and truncate content
     truncated_text = tokenize_and_truncate(text, tokenizer)
     # Generate the summary with the truncated content
-    summary = summarizer(truncated_text, min_length=150, max_length=300, truncation=True)[0]['summary_text']
+    summary = summarizer(truncated_text, min_length=100, max_length=200, truncation=True)[0]['summary_text']
     return summary
 
 # Generate topics using OpenAI
@@ -101,6 +101,7 @@ def process_csv(bucket_name, csv_key):
 
     # Step 3: Set up the summarizer (bart-large-cnn)
     summarizer = setup_summarizer()
+    tokenizer = setup_tokenizer()
 
     # Step 4: Iterate through the DataFrame and summarize articles and generate topics
     summaries = []
@@ -111,7 +112,7 @@ def process_csv(bucket_name, csv_key):
         content = row['Content']
         
         # Generate the summary
-        summary = generate_summary(content, summarizer)
+        summary = generate_summary(content, summarizer, tokenizer)
         summaries.append(summary)
         
         # Generate the topics
