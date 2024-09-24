@@ -1,0 +1,9 @@
+.DS_Store
+logs
+*.csv
+.env_StateOfTheEarth
+.env_StreamlitNewsCollection
+creds.py
+news_collection/lambda_2_summarizeAndGenerateTopics/bart-large-cnn/
+**/__pycache__/
+github_accessToken.txt
