@@ -4,7 +4,6 @@ import boto3
 from datetime import datetime
 from PIL import Image
 import io
-import creds
 import logging
 import warnings
 from stability_sdk import client
@@ -22,7 +21,7 @@ s3_client = boto3.client('s3')
 # Stability AI and Cloudinary setup
 def setup_ai_tools():
     stability_api = client.StabilityInference(
-        key=creds.STABILITY_API_KEY,
+        key=os.environ['STABILITY_API_KEY'],
         verbose=True,
         engine="stable-diffusion-xl-1024-v1-0"
     )
@@ -31,9 +30,9 @@ def setup_ai_tools():
 # Cloudinary configuration
 def configure_cloudinary():
     cloudinary.config(
-        cloud_name=creds.CLOUDINARY_CLOUD_NAME,
-        api_key=creds.CLOUDINARY_API_KEY,
-        api_secret=creds.CLOUDINARY_API_SECRET
+        cloud_name=os.environ['CLOUDINARY_CLOUD_NAME'],
+        api_key=os.environ['CLOUDINARY_API_KEY'],
+        api_secret=os.environ['CLOUDINARY_API_SECRET']
     )
 
 # Fetch CSV from S3 and load it into a DataFrame

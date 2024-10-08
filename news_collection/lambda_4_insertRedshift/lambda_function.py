@@ -1,7 +1,6 @@
 import os
 import boto3
 import psycopg2
-import creds
 import logging
 
 # Configure logging
@@ -12,11 +11,11 @@ logger.setLevel(logging.INFO)
 s3_client = boto3.client('s3')
 
 # Redshift credentials (should be stored in creds.py or AWS Secrets Manager)
-REDSHIFT_HOST = creds.REDSHIFT_HOST
-REDSHIFT_PORT = creds.REDSHIFT_PORT
-REDSHIFT_DBNAME = creds.REDSHIFT_DBNAME 
-REDSHIFT_USER = creds.REDSHIFT_USER
-REDSHIFT_PASSWORD = creds.REDSHIFT_PASSWORD
+REDSHIFT_HOST = os.environ['REDSHIFT_HOST']
+REDSHIFT_PORT = os.environ['REDSHIFT_PORT']
+REDSHIFT_DBNAME = os.environ['REDSHIFT_DBNAME'] 
+REDSHIFT_USER = os.environ['REDSHIFT_USER']
+REDSHIFT_PASSWORD = os.environ['REDSHIFT_PASSWORD']
 
 def copy_csv_to_redshift(bucket_name, csv_key):
     """
@@ -29,7 +28,7 @@ def copy_csv_to_redshift(bucket_name, csv_key):
     copy_query = f"""
     COPY ingestion.news_articles(source, publish_date, title, link, content, summary, topic1, topic2, image)
     FROM '{s3_file_path}'
-    IAM_ROLE '{creds.IAM_ROLE}'
+    IAM_ROLE '{os.environ['IAM_ROLE']}'
     CSV
     IGNOREHEADER 1
     REGION 'eu-north-1'

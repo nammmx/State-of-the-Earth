@@ -6,7 +6,6 @@ import urllib.parse
 from datetime import datetime
 import pytz
 import boto3
-import creds
 import logging
 import os
 
@@ -16,14 +15,14 @@ logger.setLevel(logging.INFO)
 
 # List of RSS feeds with their source names and URLs
 RSS_FEEDS = [
-    {'name': 'The Guardian', 'url': 'https://www.theguardian.com/us/environment/rss'},
     {'name': 'BBC News', 'url': 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml'},
     {'name': 'Grist', 'url': 'https://grist.org/feed/'},
     {'name': 'Earth911', 'url': 'https://earth911.com/feed/'},
     {'name': 'Columbia Climate School', 'url': 'https://news.climate.columbia.edu/feed/'},
     {'name': 'The Independent', 'url': 'https://www.independent.co.uk/climate-change/news/rss'},
-    {'name': 'Yale Environment 360', 'url': 'https://e360.yale.edu/feed.xml'},
-    {'name': 'Greenpeace', 'url': 'https://www.greenpeace.org/canada/en/feed/'}
+    {'name': 'Greenpeace', 'url': 'https://www.greenpeace.org/canada/en/feed/'},
+    {'name': 'The Guardian', 'url': 'https://www.theguardian.com/us/environment/rss'},
+    {'name': 'Yale Environment 360', 'url': 'https://e360.yale.edu/feed.xml'}
 ]
 
 # AWS S3 Bucket information
@@ -38,11 +37,7 @@ HEADERS = {
 }
 
 # S3 client initialization
-s3_client = boto3.client(
-    's3',
-    aws_access_key_id=creds.AWS_ACCESS_KEY,
-    aws_secret_access_key=creds.AWS_SECRET_KEY
-)
+s3_client = boto3.client('s3')
 
 def load_scraped_urls():
     """
@@ -214,14 +209,14 @@ def get_content_parser(domain):
     Return the appropriate parser function for the given domain.
     """
     parsers = {
-        'www.theguardian.com': parse_guardian,
         'www.bbc.com': parse_bbc,
         'grist.org': parse_grist,
         'earth911.com': parse_earth911,
         'news.climate.columbia.edu': parse_columbia_climate,
         'www.independent.co.uk': parse_independent,
-        'e360.yale.edu': parse_yale_environment,
-        'www.greenpeace.org': parse_greenpeace
+        'www.greenpeace.org': parse_greenpeace,
+        'www.theguardian.com': parse_guardian,
+        'e360.yale.edu': parse_yale_environment
     }
     return parsers.get(domain, None)
 

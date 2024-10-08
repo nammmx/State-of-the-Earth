@@ -8,7 +8,6 @@ import boto3
 import openai
 from transformers import pipeline, AutoTokenizer
 from datetime import datetime
-import creds
 import logging
 
 # Configure logging
@@ -19,7 +18,7 @@ logger.setLevel(logging.INFO)
 s3_client = boto3.client('s3')
 
 # OpenAI API key setup
-openai.api_key = creds.OPENAI_APIKEY
+openai.api_key = os.environ['OPENAI_API_KEY']
 
 # Summarizer setup using bart-large-cnn
 def setup_summarizer():
