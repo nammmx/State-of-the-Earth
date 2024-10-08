@@ -1,7 +1,6 @@
 import os
 import boto3
 import psycopg2
-import creds
 import logging
 
 # Configure logging
@@ -12,11 +11,14 @@ logger.setLevel(logging.INFO)
 s3_client = boto3.client('s3')
 
 # Redshift credentials (should be stored in creds.py or AWS Secrets Manager)
-REDSHIFT_HOST = creds.REDSHIFT_HOST
-REDSHIFT_PORT = creds.REDSHIFT_PORT
-REDSHIFT_DBNAME = creds.REDSHIFT_DBNAME 
-REDSHIFT_USER = creds.REDSHIFT_USER
-REDSHIFT_PASSWORD = creds.REDSHIFT_PASSWORD
+REDSHIFT_HOST = os.environ['REDSHIFT_HOST']
+REDSHIFT_PORT = os.environ['REDSHIFT_PORT']
+REDSHIFT_DBNAME = os.environ['REDSHIFT_DBNAME'] 
+REDSHIFT_USER = os.environ['REDSHIFT_USER']
+REDSHIFT_PASSWORD = os.environ['REDSHIFT_PASSWORD']
+
+# EventBridge client initialization
+eventbridge_client = boto3.client('events')
 
 def copy_csv_to_redshift(bucket_name, csv_key):
     """
@@ -29,7 +31,7 @@ def copy_csv_to_redshift(bucket_name, csv_key):
     copy_query = f"""
     COPY ingestion.news_articles(source, publish_date, title, link, content, summary, topic1, topic2, image)
     FROM '{s3_file_path}'
-    IAM_ROLE '{creds.IAM_ROLE}'
+    IAM_ROLE '{os.environ['IAM_ROLE']}'
     CSV
     IGNOREHEADER 1
     REGION 'eu-north-1'
@@ -65,6 +67,24 @@ def copy_csv_to_redshift(bucket_name, csv_key):
         cur.close()
         conn.close()
 
+def send_event_to_eventbridge():
+    """
+    Send a custom event to EventBridge after successful completion of Lambda A.
+    """
+    try:
+        response = eventbridge_client.put_events(
+            Entries=[
+                {
+                    'Source': 'custom.lambda',
+                    'DetailType': 'Lambda A Success',
+                    'Detail': '{"status": "success"}',
+                    'EventBusName': 'default'  # Use 'default' unless using a custom event bus
+                }
+            ]
+        )
+        logger.info(f"Event sent to EventBridge: {response}")
+    except Exception as e:
+        logger.error(f"Failed to send event to EventBridge: {e}")
 
 def lambda_handler(event, context):
     """
@@ -80,6 +100,10 @@ def lambda_handler(event, context):
         # Load CSV data from S3 into Redshift using COPY command
         copy_csv_to_redshift(bucket_name, csv_key)
         logger.info(f"CSV {csv_key} from {bucket_name} successfully inserted into Redshift.")
+        
+        # Send event to EventBridge upon successful insertion
+        send_event_to_eventbridge()
+        
         return {"statusCode": 200, "body": f"Success: Inserted {csv_key} into Redshift."}
     except Exception as e:
         logger.error(f"Error occurred: {e}", exc_info=True)

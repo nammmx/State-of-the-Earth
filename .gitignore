@@ -7,3 +7,7 @@ creds.py
 news_collection/lambda_2_summarizeAndGenerateTopics/bart-large-cnn/
 **/__pycache__/
 github_accessToken.txt
+.dockerignore
+aws-support-tools
+test.ipynb
+venv
