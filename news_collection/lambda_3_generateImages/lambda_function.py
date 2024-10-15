@@ -44,7 +44,7 @@ def fetch_csv_from_s3(bucket_name, csv_key):
 
 # Generate an image based on the title and summary using Stability AI
 def generate_image(stability_api, title, summary):
-    prompt = f"Create a single colored realistic image for an environmental news website. The title is: {title}. The content is: {summary}. The image should feature warm, natural colors, very soft lighting, and a slightly desaturated pastel color palette, capturing an authentic, documentary-like atmosphere."
+    prompt = f"Create a single colored realistic image for an environmental news website. The title is: {title}. The content is: {summary}. The image should feature warm, low-contrast, matte, natural colors, very soft lighting and highlights, and a slightly desaturated pastel color palette, capturing an authentic, documentary-like atmosphere."
     try:
         response = stability_api.generate(
             prompt=prompt, 

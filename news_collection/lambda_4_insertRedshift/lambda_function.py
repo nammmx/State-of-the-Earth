@@ -67,25 +67,6 @@ def copy_csv_to_redshift(bucket_name, csv_key):
         cur.close()
         conn.close()
 
-def send_event_to_eventbridge():
-    """
-    Send a custom event to EventBridge after successful completion of Lambda A.
-    """
-    try:
-        response = eventbridge_client.put_events(
-            Entries=[
-                {
-                    'Source': 'custom.lambda',
-                    'DetailType': 'Lambda A Success',
-                    'Detail': '{"status": "success"}',
-                    'EventBusName': 'default'  # Use 'default' unless using a custom event bus
-                }
-            ]
-        )
-        logger.info(f"Event sent to EventBridge: {response}")
-    except Exception as e:
-        logger.error(f"Failed to send event to EventBridge: {e}")
-
 def lambda_handler(event, context):
     """
     Lambda handler to process the uploaded CSV and insert its data into Redshift.
@@ -101,8 +82,6 @@ def lambda_handler(event, context):
         copy_csv_to_redshift(bucket_name, csv_key)
         logger.info(f"CSV {csv_key} from {bucket_name} successfully inserted into Redshift.")
         
-        # Send event to EventBridge upon successful insertion
-        send_event_to_eventbridge()
         
         return {"statusCode": 200, "body": f"Success: Inserted {csv_key} into Redshift."}
     except Exception as e:
